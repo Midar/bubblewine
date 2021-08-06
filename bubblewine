@@ -36,10 +36,13 @@ if [ ! -d "$HOME/.bubblewine" ]; then
 	WINEPREFIX="$HOME/.bubblewine" wineserver -k
 fi
 
+xsocket="/tmp/.X11-unix/X${DISPLAY#:}"
+
 bwrap									\
 	--unshare-user							\
 	--unshare-ipc							\
 	--unshare-pid							\
+	--unshare-net							\
 	--unshare-uts							\
 	--unshare-cgroup						\
 	--new-session							\
@@ -61,5 +64,6 @@ bwrap									\
 	--proc /proc							\
 	--tmpfs /tmp							\
 	--bind "$HOME/.bubblewine" /wineprefix				\
+	--bind "$xsocket" "$xsocket"					\
 	--setenv WINEPREFIX /wineprefix					\
 	wine "$@"
