@@ -36,7 +36,41 @@ if [ ! -d "$HOME/.bubblewine" ]; then
 	WINEPREFIX="$HOME/.bubblewine" wineserver -k
 fi
 
+# Rather than pass in all X11 sockets by allowing abstract sockets, only pass
+# in the socket actually being used. This increases security when using a
+# separate X11 for wine.
+#
+# WARNING: Running wine on an X11 that has other things open (a terminal, a
+#          desktop environment, etc.) that allows to start things outside of
+#          the sandbox is very probably a sandbox escape! The fix is obviously
+#          to migrate to Wayland and put X11 to its well deserved grave, but
+#          as an interim solution, a separate X11 can be used.
 xsocket="/tmp/.X11-unix/X${DISPLAY#:}"
+
+ro_binds=""
+
+# Handle various wrapper scripts around wine that some distros have.
+if head -c 1 $(which wine) | grep -F '/bin/sh' >/dev/null 2>&1; then
+	ro_binds="$ro_binds --ro-bind /bin/sh /bin/sh"
+fi
+if head -c 1 $(which wine) | grep -F '/bin/bash' >/dev/null 2>&1; then
+	ro_binds="$ro_binds --ro-bind /bin/bash /bin/bash"
+fi
+
+ro_bind_if_exists() {
+	if [ -e "$1" ]; then
+		ro_binds="$ro_binds --ro-bind $1 $1"
+	fi
+}
+
+ro_bind_if_exists /usr/bin/wine32
+ro_bind_if_exists /usr/bin/wine64
+ro_bind_if_exists /usr/bin/wine-preloader
+ro_bind_if_exists /usr/bin/wine32-preloader
+ro_bind_if_exists /usr/bin/wine64-preloader
+ro_bind_if_exists /usr/bin/wineserver32
+ro_bind_if_exists /usr/bin/wineserver64
+ro_bind_if_exists /usr/lib64
 
 bwrap									\
 	--unshare-user							\
@@ -48,17 +82,10 @@ bwrap									\
 	--new-session							\
 	--die-with-parent						\
 	--ro-bind /usr/bin/wine /usr/bin/wine				\
-	--ro-bind /usr/bin/wine-preloader /usr/bin/wine-preloader	\
-	--ro-bind /usr/bin/wine32 /usr/bin/wine32			\
-	--ro-bind /usr/bin/wine32-preloader /usr/bin/wine32-preloader	\
-	--ro-bind /usr/bin/wine64 /usr/bin/wine64			\
-	--ro-bind /usr/bin/wine64-preloader /usr/bin/wine64-preloader	\
 	--ro-bind /usr/bin/wineserver /usr/bin/wineserver		\
-	--ro-bind /usr/bin/wineserver32 /usr/bin/wineserver32		\
-	--ro-bind /usr/bin/wineserver64 /usr/bin/wineserver64		\
 	--ro-bind /usr/lib /usr/lib					\
-	--ro-bind /usr/lib64 /usr/lib64					\
 	--ro-bind /usr/share/wine /usr/share/wine			\
+	$ro_binds							\
 	--symlink usr/lib /lib						\
 	--symlink usr/lib64 /lib64					\
 	--proc /proc							\
