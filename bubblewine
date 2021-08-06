@@ -50,10 +50,10 @@ xsocket="/tmp/.X11-unix/X${DISPLAY#:}"
 ro_binds=""
 
 # Handle various wrapper scripts around wine that some distros have.
-if head -c 1 $(which wine) | grep -F '/bin/sh' >/dev/null 2>&1; then
+if head -1 $(which wine) | grep -F '/bin/sh' >/dev/null 2>&1; then
 	ro_binds="$ro_binds --ro-bind /bin/sh /bin/sh"
 fi
-if head -c 1 $(which wine) | grep -F '/bin/bash' >/dev/null 2>&1; then
+if head -1 $(which wine) | grep -F '/bin/bash' >/dev/null 2>&1; then
 	ro_binds="$ro_binds --ro-bind /bin/bash /bin/bash"
 fi
 
